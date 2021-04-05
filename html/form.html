@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>YogAlarm WebUI</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="">
+    </head>
+    
+    <style>
+        body {
+            margin: 0 auto;
+            display: flex;
+            max-width: 500px;
+            flex-direction: column;
+            justify-content: space-around;
+            align-items: center;
+            min-height: 100vh;
+            background: #383838;
+        }
+        .label {
+            color: whitesmoke;
+            font-family: Arial, Helvetica, sans-serif;
+            display: flex;
+        }
+        .form {
+            width:80%;
+            bottom:10vh;
+            padding:20px;
+            background-color: #4e4e4e;
+            border-radius: 10px;
+        }
+        .form_label {
+            color: whitesmoke;
+            font-size: 3vh;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .slider_container {
+            padding-top: 5vh;
+            padding-bottom: 5vh;
+            display: flex;
+            justify-content: center;
+            align-items: stretch;
+            text-align: center;
+        }
+        .submit_button {
+            display: table;
+            margin: 0 auto;
+            width: 60%;
+            height: 10vh;
+            font-size: 40px;
+            border-radius: 10px;
+        }
+        .temp_container {
+            display: flex;
+            flex-direction: column; 
+            align-items: center;
+            width: 80%;
+        }
+        .temp_label {
+            top: 5vh;
+            font-size: 30px;
+        }
+        .temp_value {
+            top: 1.2em;
+            font-size: 50px;
+            padding: 1vw;
+            text-align: center;
+        }
+    </style>
+    <body onload="startTemperatureRefresh(); loadAlarmThresholds();">
+        <div class="temp_container">
+            <div class="label temp_label">
+                Current Temperature
+            </div>
+            <div class="label temp_value" id="temperature_value">
+                20
+            </div>
+        </div>
+        <div class="form">
+        <form onsubmit="setAlarmThresholds(event)">
+            <label class="form_label" for="low_threshold">Low Temp:</label><br>
+            <div class="slider_container">
+                <input type="range" style="flex-grow: 2" id="low_threshold" name="low_threshold" min="-50" max="125" oninput="onLowThresholdChanged(this.value)"> 
+                <output class="form_label" style="flex-grow: 1" id="low_thresh_value"></output><br>
+            </div>
+
+            <label class="form_label" for="high_threshold">High Temp:</label><br>
+                <div class="slider_container">
+                <input type="range" id="high_threshold" style="flex-grow: 2" name="high_threshold" min="-50" max="125" oninput="onHighThresholdChanged(this.value)">
+                <output class="form_label" style="flex-grow: 1" id="high_thresh_value"></output><br>
+            </div>
+
+            <input id="submit" class="submit_button" type="submit" value="Set"><br>
+          </form>
+        </div>
+    </body>
+    <script>
+        const low_thresh_slider = document.getElementById("low_threshold");
+        const high_thresh_slider = document.getElementById("high_threshold");
+
+        const low_thresh_value = document.getElementById("low_thresh_value");
+        const high_thresh_value = document.getElementById("high_thresh_value");
+
+        const submit_button = document.getElementById("submit");
+        const temperature_value = document.getElementById("temperature_value");
+
+        function startTemperatureRefresh() {
+            refreshTemperature();
+            setInterval(refreshTemperature, 2000);
+        }
+
+        function setTemperatureTextColour(temperature) {
+            if (temperature <= parseFloat(low_thresh_value.value)) {
+                temperature_value.style.color = "rgb(56, 179, 255)";
+            } else if (temperature >= parseFloat(high_thresh_value.value)) {
+                temperature_value.style.color = "rgb(255, 30, 0)";
+            } else {
+                delete temperature_value.style.color;
+            }
+        }
+        
+        function refreshTemperature() {
+            const Http = new XMLHttpRequest();
+            const url='http://' + location.hostname + '/current_temp';
+            Http.open("GET", url);
+            Http.send();
+            Http.onloadend = (e) => {
+                console.log("Got Response" + Http.responseText)
+                var asFloat = parseFloat(Http.responseText);
+                setTemperatureTextColour(asFloat);
+                temperature_value.innerHTML = asFloat.toFixed(2) + " &#176;C";
+            }
+        }
+
+        function loadAlarmThresholds() {
+            const Http = new XMLHttpRequest();
+            const url='http://' + location.hostname + '/thresholds';
+            Http.open("GET", url);
+            Http.send();
+            Http.onloadend = (e) => {
+                console.log("Got Response" + Http.responseText)
+                var result = JSON.parse(Http.responseText);
+                low_thresh_slider.value = result.low;
+                high_thresh_slider.value = result.high;
+                updateAlarmValueDisplay();
+            }
+        }
+
+        function setAlarmThresholds(submitEv) {
+            submitEv.preventDefault();
+            submit_button.disabled = true;
+            high_thresh_slider.disabled = true;
+            low_thresh_slider.disabled = true;
+
+            const Http = new XMLHttpRequest();
+            const url='http://' + location.hostname + '/thresholds';
+
+            var thresholdObj = {
+                "low": low_thresh_slider.value,
+                "high": high_thresh_slider.value
+            };
+
+            Http.open("POST", url);
+            Http.send(JSON.stringify(thresholdObj));
+            Http.onloadend = (e) => {
+                console.log("Got Response status: " + Http.status)
+                submit_button.disabled = false;
+                high_thresh_slider.disabled = false;
+                low_thresh_slider.disabled = false;
+                if (Http.status === 200) {
+                    alert("Thresholds updated successfully!");
+                } else {
+                    alert("Failed to set temperature thresholds");
+                }
+
+            }
+        }
+
+        function updateAlarmValueDisplay() {
+           low_thresh_value.innerHTML = low_thresh_slider.value + " &#176;C";
+           high_thresh_value.innerHTML = high_thresh_slider.value + " &#176;C";
+        }
+
+        function onHighThresholdChanged(newValue) {
+           highValueInt = parseInt(newValue);
+           lowValueInt = parseInt(low_thresh_slider.value);
+
+           if (highValueInt <= lowValueInt) {
+                lowValueInt = highValueInt -1;
+                low_thresh_slider.value = lowValueInt;
+            }
+           updateAlarmValueDisplay();
+        }
+
+        function onLowThresholdChanged(newValue) {
+           lowValueInt = parseInt(newValue);
+           highValueInt = parseInt(high_thresh_slider.value);
+
+           if (lowValueInt >= highValueInt) {
+               highValueInt = lowValueInt + 1;
+               high_thresh_slider.value = highValueInt;
+           }
+           updateAlarmValueDisplay();
+        }
+
+    </script>
+</html>

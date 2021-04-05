@@ -1,0 +1,5 @@
+.pio
+.vscode
+src/wifi_credentials_do_not_commit.hpp
+doc/DS18B20.pdf
+src/WebForm.hpp

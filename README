@@ -1,0 +1,21 @@
+#YogAlarm - ESP32 Based Remote Thermometer and Alarm
+
+This is a simple project that turns a cheap ESP32-based TTGO dev board
+and DS18B20 temperature sensor into a web-based thermometer with alarm
+function. It was designed to signal when milk has cooled to a specific
+temperature for yogurt-making, but could also be used for other 
+realtime temperature monitoring applications.
+
+##Compiling
+
+WIFI_SSID and WIFI_PASSWORD must be defined in main.cpp prior to compilation.
+Other than that, it should work out-of-the-box with PlatformIO. AUDIO_GPIO_PIN
+set the pin for the speaker, and TEMP_SENSOR_GPIO_PIN sets the data pin for
+the DS18B20.
+
+##Using
+
+The ESP32 should automatically connect to the WiFi AP defined with WIFI_SSID and
+WIFI_PASSWORD. You can then access it with mDns at http://yogalarm.local. Once set,
+the low and high temperature thresholds will cause a beep to be played on the
+speaker if they are crossed.
